@@ -1,131 +1,75 @@
 import os,sys
-import random
-import deck
+try:
+    import blackjack_util.deck as deck
+except ImportError:
+    cur_dir = os.getcwd()
+    sys.path.append(os.path.join(cur_dir,'../'))
+    import blackjack_util.deck as deck
+import blackjack_util.dealer_strategy as ds
 
-# dictionaries
-score = {'2' : 2, '3' : 3, '4' : 4, '5' : 5, '6' : 6, '7' : 7, '8' : 8, '9' : 9, '10' : 10, 'J' : 10, 'Q' : 10, 'K' : 10, 'A1' : 1, 'A2' : 11}
-dealing = {1:'A',2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'J',12:'Q',13:'K'}
-dealing2 = {1:'Spade',2:'Diamond',3:'Heart',4:'Club'}
-
-# return value of card
-def card(a, b):
-    if a=='A':
-        if b==1:
-            return score['A1']
-        else:
-            return score['A2']
-    else:
-        return score[a]
-
-# dealer's strategy (a : sum of previous cards, b : new card tag(str))
-def dealer(a, b):
-    p1 = a+card(b,1)
-    p2 = a+card(b,2)
-    if b=='A':
-        if p2<=21:
-            if p2>=17:
-                return 'S'
-            else:
-                return 'H'
-        else:
-            if p1>=17:
-                return 'S'
-            else:
-                return 'H'
-    else:
-        if p1>=17:
-            return 'S'
-        else:
-            return 'H'
-
-# dealer's strategy (a : cards dealer got) -> soft 17
-def dealer2(a):
-    dcards = a.getcards()
-    tempval = a.value()
-    if tempval>=17:
-        return 'S'
-    ch = 0
-    for i in range(len(dcards)):
-        if dcards[i][1] == 'A':
-            ch += 1
-    if ch==0:
-        return 'H'
-    else:
-        if tempval+10>=17 and tempval+10<=21:
-            a.setvalue2(tempval+10)
-            #print a.value()
-            return 'S'
-        else:
-            return 'H'
-
-# experiment (d1 : dealer's first card, p1/p2 : player's first/second card, pm : player's move, nod: number of deck)
+# experiment (d1 : dealer's first card, p1/p2 : player's first/second card, pm : player's move, number_of_deck: number of deck)
 # strategies: Hit ('H'), Stay ('S'), Double ('D')
-def experi(d1,p1,p2,pm,nod):
-    dd = deck.deck(nod)
-    dd.setdeck()
-    d = deck.player("Dealer",0)
-    p = deck.player("Player 1",100)
+def experi(d1,p1,p2,pm,number_of_deck):
+    deck_on_table = deck.Deck(number_of_deck)
+    deck_on_table.set_deck()
+    dealer = deck.Player("Dealer",0)
+    player = deck.Player("Player 1",100)
 
     # previous setting
-    d.take(d1)
-    p.take(p1)
-    p.take(p2)
-    dd.removefromdeck(d1)
-    dd.removefromdeck(p1)
-    dd.removefromdeck(p2)
+    dealer.take(d1)
+    player.take(p1)
+    player.take(p2)
+    deck_on_table.remove_from_deck(d1)
+    deck_on_table.remove_from_deck(p1)
+    deck_on_table.remove_from_deck(p2)
 
     # deal new card to dealer
-    d.take(dd.deal())
-    d.setvalue()
-    p.setvalue()
-    dnm = dealer2(d)
+    dealer.take(deck_on_table.deal())
+    dealer.set_value_by_computing()
+    player.set_value_by_computing()
+    dealer_next_move = ds.dealer_soft_strategy(dealer)
 
     # run
     if pm=='H':
         # player has soft 17 strategy
         kk = 'H'
         while(kk=='H'):
-            p.take(dd.deal())
-            p.setvalue()
-            kk = dealer2(p)
+            player.take(deck_on_table.deal())
+            player.set_value_by_computing()
+            kk = ds.dealer_soft_strategy(player)
     # double
     if pm=='D':
-        p.take(dd.deal())
-        p.setvalue()
+        player.take(deck_on_table.deal())
+        player.set_value_by_computing()
         
-    while(dnm=='H'):
-        temp2 = dd.deal()
-        d.take(temp2)
-        d.setvalue()
-        dnm = dealer2(d)
-        
-    #d.showcards(0)
-    #print '\n'
-    #p.showcards(0)
+    while(dealer_next_move=='H'):
+        temp2 = deck_on_table.deal()
+        dealer.take(temp2)
+        dealer.set_value_by_computing()
+        dealer_next_move = ds.dealer_soft_strategy(dealer)
 
     # determine winner
-    #print "Dealer got " + str(d.value()) + ", and you got " + str(p.value()) + "."
-    if p.value()>21:
+    if player.get_value()>21:
         #print "Dealer win!"
         return 2
-    elif d.value()>21:
+    elif dealer.get_value()>21:
         #print "You win!"
         return 0
     else:
-        if d.value()>p.value():
+        if dealer.get_value()>player.get_value():
             #print "Dealer win!"
             return 2
-        elif d.value()==p.value():
+        elif dealer.get_value()==player.get_value():
             #print "Draw!"
             return 1
         else:
             #print "You win!"
             return 0
 
-def iterexperi(a,b,nod):
+def iterative_experiment(a,b,number_of_deck):
     res = [0,0,0]
     for i in range(b):
-        temp = experi(a[0],a[1],a[2],a[3],nod)
+        temp = experi(a[0],a[1],a[2],a[3],number_of_deck)
         res[temp]+=1
     return res
 
@@ -133,26 +77,26 @@ def iterexperi(a,b,nod):
 # assumption: no A for player
 def converter(dealer,player):
     if dealer==1:
-        dcard = ['Heart','A']
+        dealer_card = ['Heart','A']
     else:
-        dcard = ['Heart',str(dealer)]
-    pcard = []
-    for i in range(2,player/2+1):
+        dealer_card = ['Heart',str(dealer)]
+    player_card = []
+    for i in range(2,int(player/2)+1):
         if i>10 or player-i>10:
             continue
         temp = []
         temp.append(['Spade',str(i)])
         temp.append(['Spade',str(player-i)])
-        pcard.append(temp)
-    return [dcard,pcard]
+        player_card.append(temp)
+    return [dealer_card,player_card]
 
 # assumption: A for player
 def convertera(dealer,player):
     if dealer==1:
-        dcard = ['Heart','A']
+        dealer_card = ['Heart','A']
     else:
-        dcard = ['Heart',str(dealer)]
-    pcard = []
+        dealer_card = ['Heart',str(dealer)]
+    player_card = []
     if player<=11:
         temp = []
         temp.append(['Spade','A'])
@@ -167,11 +111,11 @@ def convertera(dealer,player):
             temp.append(['Spade','A'])
         else:
             temp.append(['Spade',str(player-11)])
-    pcard.append(temp)
-    return [dcard,pcard]
+    player_card.append(temp)
+    return [dealer_card,player_card]
 
-# run experiment (a: dealer upcard, b: sum of player's cards, c: existence of A, nod: number of decks)
-def runexp(a,b,c,nod):
+# run experiment (a: dealer upcard, b: sum of player's cards, c: existence of A, number_of_deck: number of decks)
+def run_experiment(a,b,c,number_of_deck):
     # test size
     size = 1000
     # result (# of player's win, # of draw, # of dealer's win for hit, stay and double)
@@ -183,9 +127,9 @@ def runexp(a,b,c,nod):
     else:
         sample = convertera(a,b)
     for i in range(len(sample[1])):
-        temph = iterexperi([sample[0],sample[1][i][0],sample[1][i][1],'H'],size,nod)
-        temps = iterexperi([sample[0],sample[1][i][0],sample[1][i][1],'S'],size,nod)
-        tempd = iterexperi([sample[0],sample[1][i][0],sample[1][i][1],'D'],size,nod)
+        temph = iterative_experiment([sample[0],sample[1][i][0],sample[1][i][1],'H'],size,number_of_deck)
+        temps = iterative_experiment([sample[0],sample[1][i][0],sample[1][i][1],'S'],size,number_of_deck)
+        tempd = iterative_experiment([sample[0],sample[1][i][0],sample[1][i][1],'D'],size,number_of_deck)
         res[0][0]+=temph[0]
         res[0][1]+=temph[1]
         res[0][2]+=temph[2]
@@ -224,21 +168,24 @@ def runexp(a,b,c,nod):
 
 
 # write database
-def expres(nod):
+def experiment_result(number_of_deck):
     data = []
     for i in range(1,11):
         for j in range(2,21):
             if j!=2 and j!=3:
-                res = runexp(i,j,0,nod)
+                res = run_experiment(i,j,0,number_of_deck)
                 data.append([i,j,res])
-            res = runexp(i,j,1,nod)
+            res = run_experiment(i,j,1,number_of_deck)
             data.append([i,str(j)+'A',res])
     return data
 
 # txt file
-def dbtxt(nod):
-    data = expres(nod)
-    f = file(str(nod)+'db.txt','w')
+def result_in_text(number_of_deck,text_file = 'db.txt',db_dir = None):
+    if db_dir is None:
+        cur_dir = os.getcwd()
+        db_dir = os.path.join(os.path.split(cur_dir)[0],'db_result')
+    data = experiment_result(number_of_deck)
+    f = open(os.path.join(db_dir,str(number_of_deck)+'_'+text_file),'w')
     f.write('dealer\tplayer\thit\tstay\tdouble\thit\tstay\tdouble\n')
     for i in range(len(data)):
         f.write(str(data[i][0]))
@@ -258,3 +205,7 @@ def dbtxt(nod):
         f.write(str(data[i][2][2]))
         f.write('\n')
     f.close()
+
+
+if __name__=='__main__':
+    data = experiment_result(1)

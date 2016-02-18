@@ -7,86 +7,68 @@ except ImportError:
     import blackjack_util.deck as deck
 import blackjack_util.dealer_strategy as ds
 import simulator.blackjack as bj
+import numpy as np
 
 class BlackjackAIWithDB:
-    def __init__(self,db_dir):
-        pass
-# artificial intelligence (naive version)
-def AI(sit,dbres):
-    res = ['H','S','D']
-    dvalue = sit[0][1]
-    if dvalue=='A':
-        dvalue = 1
-    if dvalue=='J' or dvalue=='Q' or dvalue=='K':
-        dvalue = 10
-    pvalue = sit[2]
-    #print dvalue, pvalue
-    # check if player has Ace
-    temp = 0
-    for i in range(len(sit[1])):
-        if sit[1][i][1]=='A':
-            temp = 1
-    for i in range(len(dbres)):
-        if int(dvalue)==int(dbres[i][0]):
-            if temp==0:
-                if 'A' not in dbres[i][1]:
-                    if int(dbres[i][1])==int(pvalue):
-                        return res[int(dbres[i][2])]
-            else:
-                if 'A' in dbres[i][1]:
-                    if int(dbres[i][1][0:len(dbres[i][1])-1])==int(pvalue):
-                        return res[int(dbres[i][2])]
-
-# read database (select strategy with biggest winning probability)
-def db(nod):
-    f = open(str(nod)+'db.txt','r')
-    data = []
-    for line in f:
-        if line[0]=='d':
-            continue
-        l = line.split('\t')
-        temp = 0.0
-        tempind = 0
-        for i in range(2,5):
-            if float(l[i])>temp:
-                tempind = i-2
-                temp = float(l[i])
-        temp2 = [l[0],l[1],tempind]
-        data.append(temp2)        
-    return data
-
-# read raw DB
-def dbraw(nod):
-    f = open(str(nod)+'db.txt','r')
-    data = []
-    for line in f:
-        if line[0]=='d':
-            continue
-        l = line.split('\t')
-        temp = [l[0],l[1]]
-        check = 0
-        for i in range(5,8):
-            l[i] = l[i].strip('\n')
-            l[i] = l[i].strip('[')
-            l[i] = l[i].strip(']')
-            temp2 = l[i].split(', ')
-            for j in range(len(temp2)):
-                check+=int(temp2[j])
-            temp.append(temp2[0])
-        temp.append(str(check/3))
-        data.append(temp)
-    return data
+    def __init__(self,db_dir,money_at_first=100):
+        ## check validity
+        if not os.path.isdir(db_dir):
+            raise FileNotFoundError(db_dir + ' does not exist!')
+        self.db_dir = db_dir
+        ## initialize
+        self.initialize(money_at_first)
+        
+    def initialize(self,money_at_first):
+        self.cur_condition = None
+        self.money = money_at_first
+        self.database = {}
+        self.read_database()
     
-# full result (n: # of trial, a: target, nod: number of deck)
-def itisim(n,a,nod):
-    res = 0
-    for i in range(n):
-        temp = simulator(a,nod)
-        res+=temp
-    # number of winning trial
-    return res
-
+    ## curr_cards format: {player:['S5','C3'],dealer:['S10']}    
+    def play_blackjack(self,curr_cards):
+        key = self.get_db_key_from_cards(curr_cards)
+        cur_probability = self.database[1][key]
+        print(cur_probability)
+        
+    
+    ## percentage based
+    def read_database(self):
+        db_files = os.listdir(self.db_dir)
+        for file in db_files:
+            cur_number_of_deck = int(file.split('db')[0])
+            temp_data = {}
+            temp_file = open(os.path.join(self.db_dir,file))
+            ## header parser
+            header = temp_file.readline().strip('\n').split('\t')
+            for line in temp_file:
+                line_list = line.split('\t')
+                line_data = {}
+                for i in range(2,5):
+                    line_data[header[i]] = line_list[i]
+                temp_data[','.join(line_list[:2])] = line_data  
+            temp_file.close()
+            self.database[cur_number_of_deck] = temp_data
+        
+    def get_database(self):
+        return self.database
+        
+    def get_db_key_from_cards(self,curr_cards):
+        dealer_card = curr_cards['dealer']
+        player_cards = curr_cards['player']
+        dealer_number = int(dealer_card[0][1:]) if dealer_card[0][1]!='A' else 1
+        is_ace = False
+        player_number = 0
+        for card in player_cards:
+            if card[1]=='A':
+                player_number+=1
+                is_ace = True
+            else:
+                player_number+=int(card[1])
+        key = str(dealer_number)+','+str(player_number)
+        if is_ace:
+            key+='A'
+        return key
 
 ## sample run
 if __name__=='__main__':
-    pass
+    ai_instance = BlackjackAIWithDB('../db_result')

@@ -25,10 +25,28 @@ class BlackjackAIWithDB:
         self.read_database()
     
     ## curr_cards format: {player:['S5','C3'],dealer:['S10']}    
-    def play_blackjack(self,curr_cards):
-        key = self.get_db_key_from_cards(curr_cards)
-        cur_probability = self.database[1][key]
-        print(cur_probability)
+    def play_blackjack(self,curr_cards,rule = 'thumbs'):
+        card_key = self.get_db_key_from_cards(curr_cards)
+        strategy = {}
+        for key in list(self.database[1][card_key]):
+            strategy[key]=0
+        if rule=='thumbs':
+            for i in range(len(self.database)):
+                max_num = -1
+                max_key = ''
+                for key in list(self.database[i+1][card_key]):
+                    if float(self.database[i+1][card_key][key])>max_num:
+                        max_num = float(self.database[i+1][card_key][key])
+                        max_key = key
+                strategy[key]+=1
+        
+        max_num=-1
+        max_key = ''
+        for key in list(strategy):
+            if strategy[key]>max_num:
+                max_num=strategy[key]
+                max_key = key
+        return key
         
     
     ## percentage based
@@ -72,3 +90,5 @@ class BlackjackAIWithDB:
 ## sample run
 if __name__=='__main__':
     ai_instance = BlackjackAIWithDB('../db_result')
+    ai_instance.read_database()
+    bb = ai_instance.play_blackjack({'player':['S5','C2'],'dealer':['S7']})

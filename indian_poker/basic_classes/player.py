@@ -6,11 +6,12 @@ Created on Fri Feb 19 23:12:31 2016
 """
 # player class
 class Player:
-    def __init__(self,name,money):
+    def __init__(self,name,money,strategy = '1'):
         self.name = name
         self.card = 0
         self.money = money
         self.status = 0
+        self.strategy = strategy
     def take(self,l):
         self.card = l
     def set_money(self,m):
@@ -19,6 +20,8 @@ class Player:
         print(self.card)
     def get_cards(self):
         return self.card
+    def fold(self):
+        self.card = -1
     def get_money(self):
         return self.money
     def clear_cards(self):
@@ -34,3 +37,7 @@ class Player:
         return self.status
     def get_name(self):
         return self.name
+        
+    def next_move(self,opp_num,betting_odd):
+        ## filled in after ai is developed
+        pass

@@ -9,8 +9,7 @@ import numpy as np
 # card class
 class Cards:
     def __init__(self):
-        random_number = np.random.randint(1,10)
-        self.num = random_number
+        self.num = np.random.randint(1,10)
     def get_card(self):
         return self.num
 
@@ -27,13 +26,13 @@ class Deck:
         return self.deck_list
     def deal(self):
         card_from_deck = Cards()
-        dealed_card = card_from_deck.getcard()
+        dealed_card = card_from_deck.get_card()
         if [dealed_card,0] in self.deck_list:
             #print "it has been dealed_card"
             return self.deal()
         else:
             #print "The card " + dealed_card[1] + " " + dealed_card[0]+" has been dealed_card"
-            for i in range(self.p+1):
+            for i in range(self.number_of_player+1):
                 if [dealed_card,i] in self.deck_list:
                     self.deck_list[self.deck_list.index([dealed_card,i])] = [dealed_card,i-1]
                     break
